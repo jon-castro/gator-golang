@@ -2,26 +2,41 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/jon-castro/gator-golang/internal/config"
 )
 
+type state struct {
+	cfg *config.Config
+}
+
 func main() {
-	read, err := config.Read()
+	cfg, err := config.Read()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = read.SetUser("jon")
-	if err != nil {
-		return
+	programState := &state{
+		cfg: &cfg,
 	}
 
-	setFile, err := config.Read()
-	if err != nil {
-		fmt.Println(err)
-		return
+	cmds := commands{
+		registeredCommands: make(map[string]func(*state, command) error),
 	}
-	fmt.Println(setFile)
+	cmds.register("login", handlerLogin)
+
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: cli <command> [args...]")
+	}
+
+	cmdName := os.Args[1]
+	cmdArgs := os.Args[2:]
+
+	err = cmds.run(programState, command{Name: cmdName, Args: cmdArgs})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
